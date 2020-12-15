@@ -101,8 +101,8 @@ Here, we explain in detail the most interesting parts of the web interface code.
 
 We chose to separate the data into these four channels, rather than combining them into one and separating the data in the frontend. This was to allow the panels to update independently of each other; we wanted the web interface to eventually be able to accommodate updating different sections of the data at different times and frequencies. In addition, the Pusher documentation suggests separating by channels rather than events or within the frontend for performance purposes. 
 
-<!--- ### Vue component structure
-{todo} --->
+### Vue component structure
+Every Vue component has a template section and script section. The template section is similar to HTML, while the script section is JavaScript. More details on the Vue component structure can be found in the [official Vue guide](https://vuejs.org/v2/guide/), which we *highly* recommend working through before trying to write your own components.
 
 ### Sensor diagram
 
@@ -283,6 +283,7 @@ fetch ball
 The first step of processing this text is tokenization. Each line is broken into three pieces of information: its value (text), node type (conditionals, actions, etc), and number of tabs. The lines are stored in a list in the same order as they were in the text file.
 
 ```js
+// TreeDiagram.vue
 tokenize(text) {
   let lines = text.split('\n')
   let tokens = []
@@ -323,6 +324,7 @@ Next, the list of tokens is parsed into a tree format using JavaScript objects. 
 This structure is created using the recursive method `parseTree`, which takes in the list of tokens returned from `tokenize` and the current index within that list (starting at 0), and returns a node in the above format representing the current token (including all of its children). 
 
 ```js
+// TreeDiagram.vue
 parseTree(tokens, index) {
   let node = {
     value: tokens[index].value,
@@ -355,6 +357,7 @@ The base case occurs if the current token is a leaf node, which means that eithe
 The tree is drawn by calling the method `drawTree`, which initializes the paper and graph that JointJS requires. Then it calls `drawNode`, which takes in the JointJS graph object, JointJS parent element, and JavaScript object representing the current node.
 
 ```js
+// TreeDiagram.vue
 drawNode(graph, parent, nodeObj) {
   let node = new joint.shapes.standard.Rectangle()
   // style node and add label
@@ -381,14 +384,60 @@ drawNode(graph, parent, nodeObj) {
 
 `drawNode` recursively travels through each node and its children, drawing the appropriate element and the link between itself and its parent for each node. Note that when drawing links, JointJS requires both the parent node (source) and child node (target) of the link to be already added to the graph.
 
+#### Serializing the tree
 
-<!--- #### Serializing the tree
+Serializing the tree is also recursive and works very similarly to drawing and parsing the tree. However, because sibling order matters, the y-coordinate of each sibling node is taken into account when deciding the line order in the resulting string. 
 
-{todo}
+```js
+// TreeDiagram.vue
+children.sort((firstElt, secondElt) => firstElt.get('position').y - secondElt.get('position').y)
+```
+
+If the y-coordinate of *Node A* is less than its sibling *Node B*, then *Node A*'s text will be placed before *Node B*'s text in the final string.
 
 #### User interaction
 
-#### Highlighting the active node --->
+There are three ways a user can interact with the graph: adding, removing, and editing. The user can add an element by shift-clicking and dragging on an existing node, which will add a child node to the existing one. They can also shift-click and drag on the blank canvas, which will add a parent-child node pair. The user can remove elements by alt-clicking on them; this works for both nodes and edges. Finally, the user can edit the text on an existing node by double-clicking on the node, which will bring up a prompt for the user to enter the new text. All of these user interactions are coded using [JointJS's built-in events](https://resources.jointjs.com/tutorial/events).
+
+```js
+// TreeDiagram.vue
+paper.on('element:pointerdown', (elementView, evt, x, y) => {
+  if (evt.shiftKey) {
+    // prevent element from being dragged
+    elementView.options.interactive = false
+    let width = 145
+    let height = 50
+    let child = new joint.shapes.standard.Rectangle({
+      position: { x: x - width/2, y: y - height/2 },
+      size: { width, height },
+    })
+    this.styleNode(child, 'new node', 'blank')
+    child.addTo(this.graph)
+    evt.data.draggedElement = child
+    // create link
+    let link = new joint.shapes.standard.Link()
+    link.attr('line/strokeWidth', 1)
+    link.source(elementView.model)
+    link.target(child)
+    link.addTo(this.graph)
+  } else {
+    elementView.options.interactive = true
+  }
+
+  if (evt.altKey) {
+    elementView.model.remove()
+  }
+})
+
+paper.on('element:pointermove', (elementView, evt, x, y) => {
+  if (evt.data.draggedElement) {
+    let {width, height} = evt.data.draggedElement.get('size')
+    evt.data.draggedElement.set('position', {x: x - width/2, y: y - height/2})
+  }
+})
+```
+
+These two events handle both removing a node by alt-clicking and adding a child node to an existing one by shift-clicking and dragging. When we call `paper.on()`, we give it two arguments: the name of the event, and the function to call when the event is triggered. This means that when the `pointerdown` event is detected on an `element` (aka node), we check if the shift key is also being pressed. If so, we create the new child node and link connecting the current node and the new node. As the mouse is dragged around the canvas, the `pointermove` event is repeatedly triggered. So, the second call to `paper.on()` comes into play; it causes the new node to be dragged around with the movement of the mouse. Note that the dragged element is passed from the `pointerdown` to the `pointermove` callback functions using the `evt.data` object, similar to [this example from the JointJS docs](https://resources.jointjs.com/tutorial/connecting-by-dropping).
 
 ## What we would do next
 
@@ -402,10 +451,11 @@ Currently, the web interface is a static website, meaning that it has no backend
 
 We are currently using the external Pusher service to pass information from python scripts to the frontend. Instead, we might consider coding web sockets manually. (Pusher likely uses web sockets or a similar mechanism behind-the-scenes.) This could be not just an interesting exercise, but also increase our flexibility in terms of which parts of the architecture are able to act as a *server* (sending data) or *client* (receiving data). Unfortunately, Pusher has [limited client/server libraries](https://pusher.com/docs/channels/channels_libraries/libraries), which makes communication from the frontend JavaScript to the python scripts more difficult than the other way around. As an alternative to creating web sockets from scratch, future developers could research how existing Pusher libraries work and contribute to Pusher by creating a server library for JavaScript.
 
-<!--- ### Improve behavior tree support
-{todo} --->
+### Improve behavior tree support
 
-It could be very interesting to be able to modify the robot's behavior by modifying its behavior tree on the web interface. This would require communication from the JavaScript frontend to the python scripts.
+It would be really cool to be able to modify the robot's behavior by modifying its behavior tree on the web interface. This would require communication from the JavaScript frontend to the python scripts, which is not yet set up.
+
+In addition, allowing both user interaction and active node highlighting could cause a conflict. One fix for this potential problem could be pausing active node highlighting while the user is editing the graph, until the user's edits are reflected in the robot's behavior.
 
 ### Add routes
 
