@@ -36,6 +36,7 @@ class TreeControl(Control):
         except timeout:
             self.last_cv = []
 
+    # override to remove steps - sole purpose is to send commands
     def _step(self, tree):
         js_msg = self.joystick.get_input()
 
@@ -63,6 +64,7 @@ class TreeControl(Control):
         self.send_cmd()
         self.send_pusher_message(self.last_pos, self.last_obj, self.last_cv)
 
+    # override to send pusher active node
     def send_pusher_message(self, pos, obj, cv):
         bbox = self.current_target
         timestamp = time.time()
@@ -110,13 +112,11 @@ if __name__ == '__main__':
     vis_p = Popen(['python3', VISION_SCRIPT])
     robo_p = Popen(['python3', RUN_ROBOT_PATH])
     time.sleep(5)
-    # control.run_loop()
-    # tsh = pupper_tree_classes.TreeStateHandler(None)
     id_count = 0
 
     tree_structure = {"Root":                     (py_trees.composites.Sequence("Root"), ["Avoid", "Go", "Go to target"]),
                       "Avoid":                    (pupper_actions.AvoidObstaclesNode(tsh), []),
-                      "Go":                       (pupper_actions.MoveUntilTargetFoundNode(tsh), []),
+                      "Go":                       (pupper_actions.MeanderNode(tsh), []),
                       "Go to target":             (pupper_actions.GoToTargetNode(tsh), [])}
 
     """
@@ -125,7 +125,7 @@ if __name__ == '__main__':
                               "Look for ball":            (py_trees.composites.Selector("Root"), ["Turn around", "Meander"]),
                               "Turn around":              (pupper_actions.TurnAroundNode(tsh), []),
                               "Meander":                  (pupper_actions.MeanderNode(tsh), []),
-                              "Move Towards Ball":        (pupper_actions.MoveUntilTargetFoundNode(tsh), []),
+                              "Move Towards Ball":        (pupper_actions.GoToTargetNode(tsh), []),
                               "Wait":                     (pupper_actions.WaitNode(tsh), [])}
     """
 
@@ -175,7 +175,7 @@ if __name__ == '__main__':
 
     try:
         behaviour_tree.tick_tock(
-            period_ms=50,
+            period_ms=50,  # match default control rate
             number_of_iterations=py_trees.trees.CONTINUOUS_TICK_TOCK,
             pre_tick_handler=tsh.update_data,
             post_tick_handler=control._step
