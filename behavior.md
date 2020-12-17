@@ -1,3 +1,7 @@
+---
+layout: template
+---
+
 **Overview**
 
 The aim of investigating different ways of expressing behavioral control was to simplify the addition and testing cycle of new robot actions. Several approaches were considered, and in the end behavior trees were chosen over finite state machines and decision trees due to their comparative power, improved modularity, as well as ease of interpretation.
