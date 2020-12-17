@@ -1,14 +1,13 @@
 ---
 layout: template
 ---
-
-**Overview**
+# Overview
 
 The aim of investigating different ways of expressing behavioral control was to simplify the addition and testing cycle of new robot actions. Several approaches were considered, and in the end behavior trees were chosen over finite state machines and decision trees due to their comparative power, improved modularity, as well as ease of interpretation.
 
 Behavior trees are a way to compartmentalize code segments into nodes that can be easily reconfigured and controlled with real-time logic, without the need to worry about excess state transitions. The current implementation (found in pupperpy/control_loop_tree.py and pupperpy/Behavior) contains examples of tree initialization and action creation.
 
-**Instructions**
+# Instructions
 
 The core behavior tree implementation is dependent on the py_trees library.
 
@@ -27,7 +26,7 @@ sudo python3 control_loop.py
 
 (The above diagram illustrates the default pupper behavior at a high level, with "meandering" being the current running action. In terms of composite node logic, this implies that avoiding obstacles has finished, and that turning around did not lead to finding the ball.)
 
-**PyTrees**
+# PyTrees
 
 PyTrees contains predefined classes for action and composite (sequence ->, selector ?, and parallel ll) nodes that are the building blocks for behavior trees. Information explaining the library as well as explanations of the theory behind using these trees can be found at: https://py-trees.readthedocs.io/en/devel/. The instantiation and running of our current behavior tree can be found in the main control_loop_tree.py loop, which can be done with the following framework:
 
@@ -58,7 +57,7 @@ class DoAThing(py_trees.behaviour.Behaviour):
 
 Such actions can be found in the Behavior folder in the main pupperpy directory.
 
-**Automatic initialization/visualization**
+# Automatic initialization/visualization
 
 control_loop_tree allows developers to define trees in a more organized fashion with dictionary parsing:
 
@@ -84,7 +83,7 @@ which is parsed and read by the CERBaris web service. Note that py_trees does no
 
 The TreeStateHandler in Behavior/pupper_tree_classes assigns integer node ids to every node added in this fashion, and uses those ids to identify and communicate which of those nodes is currently running at all times.
 
-**Next Steps**
+# Next Steps
 
 The clear next step is to further build CERBaris's internal library of primitive actions and conditions, such as backward dodging, crouching, chasing, etc. Implementing all the joystick features and beyond will greatly expand the quadruped's range of behavioral possibilities.
 
